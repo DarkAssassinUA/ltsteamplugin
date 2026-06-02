@@ -3,7 +3,7 @@
   "name": "luatools",
   "common_name": "LuaTools",
   "description": "LuaTools Steam Plugin!",
-  "version": "8.0.3",
+  "version": "8.0.4",
   "backendType": "lua",
   "include": [
     "public"
