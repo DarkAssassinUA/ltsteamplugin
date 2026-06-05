@@ -119,6 +119,14 @@ function downloads._finalize_install_lua(appid, extract_dir, dest_path, api_name
     _set_download_state(appid, { status = "done", success = true, api = api_name })
 end
 
+local function to_utf16le(str)
+    local utf16 = {}
+    for i = 1, #str do
+        table.insert(utf16, str:sub(i, i) .. "\0")
+    end
+    return table.concat(utf16)
+end
+
 local function _launch_async_download(appid, url, dest_path, extract_dir)
     local is_windows = m_utils.getenv("OS") == "Windows_NT"
     local dest_root = utils.ensure_temp_download_dir()
@@ -129,10 +137,12 @@ local function _launch_async_download(appid, url, dest_path, extract_dir)
     
     if is_windows then
         local ps1_path = fs.join(paths.get_plugin_dir(), "backend", "scripts", "downloader.ps1")
-        local cmd = string.format(
-            'powershell -WindowStyle Hidden -Command "Start-Process -FilePath powershell -WindowStyle Hidden -ArgumentList \'-ExecutionPolicy Bypass -File \'\'%s\'\' -Url \'\'%s\'\' -DestPath \'\'%s\'\' -ExtractDir \'\'%s\'\' -StateFile \'\'%s\'\'\'"',
+        local raw_cmd = string.format(
+            'Start-Process -FilePath powershell -WindowStyle Hidden -ArgumentList \'-ExecutionPolicy Bypass -File "%s" -Url "%s" -DestPath "%s" -ExtractDir "%s" -StateFile "%s"\'',
             ps1_path, url, dest_path, extract_dir, state_file
         )
+        local encoded = m_utils.base64_encode(to_utf16le(raw_cmd))
+        local cmd = 'powershell -WindowStyle Hidden -EncodedCommand ' .. encoded
         m_utils.exec(cmd)
     else
         local sh_path = fs.join(paths.get_plugin_dir(), "backend", "scripts", "downloader.sh")

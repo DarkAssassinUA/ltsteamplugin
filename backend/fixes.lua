@@ -51,6 +51,14 @@ function fixes.check_for_fixes(appid)
     return result
 end
 
+local function to_utf16le(str)
+    local utf16 = {}
+    for i = 1, #str do
+        table.insert(utf16, str:sub(i, i) .. "\0")
+    end
+    return table.concat(utf16)
+end
+
 function fixes.apply_game_fix(appid, download_url, install_path, fix_type, game_name)
     local dest_root = utils.ensure_temp_download_dir()
     local dest_zip = fs.join(dest_root, "fix_" .. tostring(appid) .. ".zip")
@@ -62,10 +70,12 @@ function fixes.apply_game_fix(appid, download_url, install_path, fix_type, game_
     local is_windows = m_utils.getenv("OS") == "Windows_NT"
     if is_windows then
         local ps1_path = fs.join(paths.get_plugin_dir(), "backend", "scripts", "downloader.ps1")
-        local cmd = string.format(
-            'powershell -WindowStyle Hidden -Command "Start-Process -FilePath powershell -WindowStyle Hidden -ArgumentList \'-ExecutionPolicy Bypass -File \'\'%s\'\' -Url \'\'%s\'\' -DestPath \'\'%s\'\' -ExtractDir \'\'%s\'\' -StateFile \'\'%s\'\'\'"',
+        local raw_cmd = string.format(
+            'Start-Process -FilePath powershell -WindowStyle Hidden -ArgumentList \'-ExecutionPolicy Bypass -File "%s" -Url "%s" -DestPath "%s" -ExtractDir "%s" -StateFile "%s"\'',
             ps1_path, download_url, dest_zip, install_path, state_file
         )
+        local encoded = m_utils.base64_encode(to_utf16le(raw_cmd))
+        local cmd = 'powershell -WindowStyle Hidden -EncodedCommand ' .. encoded
         m_utils.exec(cmd)
     else
         local sh_path = fs.join(paths.get_plugin_dir(), "backend", "scripts", "downloader.sh")

@@ -9,6 +9,14 @@ local steam_utils = require("steam_utils")
 
 local auto_update = {}
 
+local function to_utf16le(str)
+    local utf16 = {}
+    for i = 1, #str do
+        table.insert(utf16, str:sub(i, i) .. "\0")
+    end
+    return table.concat(utf16)
+end
+
 function auto_update.check_for_updates_now()
     local cfg_path = paths.backend_path(config.UPDATE_CONFIG_FILE)
     local cfg = utils.read_json(cfg_path)
@@ -61,7 +69,7 @@ function auto_update.check_for_updates_now()
     end
     
     local current_version = utils.get_plugin_version()
-
+ 
     -- Compare version tables component by component (can't use <= on tables in Lua)
     local function compare_versions(a, b)
         local ta = utils.parse_version(a)
@@ -76,7 +84,7 @@ function auto_update.check_for_updates_now()
         end
         return 0
     end
-
+ 
     if compare_versions(latest_version, current_version) <= 0 then
         return { success = true, message = "Up-to-date (current " .. current_version .. ")" }
     end
@@ -89,7 +97,12 @@ function auto_update.check_for_updates_now()
         local ps1_path = fs.join(paths.get_plugin_dir(), "backend", "scripts", "downloader.ps1")
         local temp_ps1 = fs.join(paths.get_backend_dir(), "temp_updater.ps1")
         m_utils.write_file(temp_ps1, m_utils.read_file(ps1_path))
-        cmd = string.format('powershell -ExecutionPolicy Bypass -Command "& \'%s\' -Url \'%s\' -DestPath \'%s\' -ExtractDir \'%s\'"', temp_ps1, zip_url, pending_zip, paths.get_plugin_dir())
+        local raw_cmd = string.format(
+            'powershell -ExecutionPolicy Bypass -File "%s" -Url "%s" -DestPath "%s" -ExtractDir "%s"',
+            temp_ps1, zip_url, pending_zip, paths.get_plugin_dir()
+        )
+        local encoded = m_utils.base64_encode(to_utf16le(raw_cmd))
+        cmd = 'powershell -WindowStyle Hidden -EncodedCommand ' .. encoded
     else
         cmd = string.format('curl -L -o "%s" "%s" && unzip -o -q "%s" -d "%s"', pending_zip, zip_url, pending_zip, paths.get_plugin_dir())
     end
