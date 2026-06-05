@@ -16,13 +16,11 @@ jobs:
 
       - name: Package plugin
         run: |
-          mkdir luatools
-          cp -r backend public .millennium plugin.json readme.md luatools/
-          zip -r luatools.zip luatools
+          zip -r ltsteamplugin.zip backend public .millennium plugin.json readme.md
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: luatools.zip
+          files: ltsteamplugin.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
